@@ -1,0 +1,31 @@
+{
+  "name": "thunderid-skills",
+  "version": "0.1.0",
+  "description": "Agent skills & plugins for developers using ThunderID",
+  "author": {
+    "name": "ThunderID",
+    "email": "",
+    "url": "https://thunderid.dev"
+  },
+  "repository": "https://github.com/thunderid/skills",
+  "license": "Apache-2.0",
+  "keywords": ["thunderid", "auth", "oidc", "oauth2"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ThunderID",
+    "shortDescription": "ThunderID auth SDK installation and framework guidance",
+    "longDescription": "Official ThunderID skills bundle — set up the server, install the SDK, configure providers, protect routes, and access session data across Next.js, Nuxt, React, Vue, Express, Node.js, and more.",
+    "developerName": "ThunderID",
+    "category": "Coding",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Add ThunderID auth to my Next.js app",
+      "Install ThunderID in my Vue project",
+      "Set up ThunderID authentication with React",
+      "Configure ThunderID in my Nuxt app",
+      "Protect Express routes with ThunderID"
+    ],
+    "brandColor": "#3688FF",
+    "logo": "./assets/images/brand/logo-mini-inverted.svg"
+  }
+}

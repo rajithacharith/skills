@@ -1,0 +1,41 @@
+{
+  "name": "thunderid-skills",
+  "owner": {
+    "name": "ThunderID",
+    "email": ""
+  },
+  "metadata": {
+    "description": "Agent skills & plugins for developers using ThunderID",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "core",
+      "description": "ThunderID installation and setup",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/core/setup-thunderid"
+      ]
+    },
+    {
+      "name": "integration",
+      "description": "Framework and platform-specific ThunderID integration",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/integration/integrate-nextjs",
+        "./skills/integration/integrate-nuxt",
+        "./skills/integration/integrate-react",
+        "./skills/integration/integrate-react-router",
+        "./skills/integration/integrate-tanstack-router",
+        "./skills/integration/integrate-vue",
+        "./skills/integration/integrate-express",
+        "./skills/integration/integrate-node",
+        "./skills/integration/integrate-browser",
+        "./skills/integration/integrate-javascript",
+        "./skills/integration/integrate-oidc"
+      ]
+    }
+  ]
+}
