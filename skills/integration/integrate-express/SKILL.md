@@ -19,7 +19,7 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 3. Fill in:
    - **Name**: your app name
    - **Type**: Web Application
-   - **Authorized Redirect URL**: `http://localhost:3000/callback`
+   - **Authorized Redirect URL**: `http://localhost:3000/login`
 4. Copy the **Client ID** and **Client Secret**
 
 ### Via the API
@@ -37,7 +37,7 @@ curl -kL -X POST https://localhost:8090/applications \
       "config": {
         "grantTypes": ["authorization_code", "refresh_token"],
         "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:3000/callback"],
+        "redirectUris": ["http://localhost:3000/login"],
         "tokenEndpointAuthMethod": "client_secret_basic",
         "publicClient": false,
         "pkceRequired": true
@@ -51,68 +51,69 @@ curl -kL -X POST https://localhost:8090/applications \
 Detect the package manager from lockfiles: `pnpm-lock.yaml` → `pnpm add`, `yarn.lock` → `yarn add`, `bun.lockb` → `bun add`, else `npm install`.
 
 ```bash
-npm install @thunderid/express
+npm install express cookie-parser @thunderid/express
 ```
 
-## Step 3 — Register Middleware
+## Step 3 — Add Middleware and Routes
 
-```ts
-import express from 'express'
-import { thunderID, requireAuth } from '@thunderid/express'
+Create `index.js`:
 
-const app = express()
+```js
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const { thunderID, handleSignIn, handleSignOut, protect } = require('@thunderid/express');
 
-app.use(thunderID({
-  clientId: '<your-client-id>',
-  clientSecret: '<your-client-secret>',
-  baseUrl: 'https://localhost:8090',
-  redirectUri: 'http://localhost:3000/callback',
-  sessionSecret: '<random-string-at-least-32-chars>',
-}))
+const app = express();
+const port = 3000;
+
+app.use(cookieParser());
+app.use(express.json());
+
+app.use(
+  thunderID({
+    baseUrl: 'https://localhost:8090',
+    clientId: '<your-client-id>',
+    clientSecret: '<your-client-secret>',
+    afterSignInUrl: 'http://localhost:3000/login',
+    afterSignOutUrl: 'http://localhost:3000/logout',
+  }),
+);
+
+app.get('/', (_req, res) => {
+  res.send('<a href="/protected">Go to protected page</a>');
+});
+
+app.get('/login', handleSignIn());
+app.get('/logout', handleSignOut());
+
+app.get(
+  '/protected',
+  protect((res) => res.redirect('/login')),
+  (_req, res) => {
+    res.send('You are signed in and can access this protected route.');
+  },
+);
+
+app.get('/me', protect(), async (req, res) => {
+  const user = await req.thunderIDAuth.getUserFromRequest(req);
+  res.json(user);
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
 ```
 
-## Step 4 — Add Auth Routes
-
-The middleware automatically mounts `/login`, `/callback`, and `/logout` routes. You can customise the paths via options, or wire them manually:
-
-```ts
-// Manual login trigger
-app.get('/login', (req, res) => {
-  res.thunderID.signIn()
-})
-
-// Manual logout trigger
-app.get('/logout', (req, res) => {
-  res.thunderID.signOut()
-})
-```
-
-## Step 5 — Protect Routes
-
-```ts
-// Redirect to login if not signed in (web routes)
-app.get('/dashboard', requireAuth(), (req, res) => {
-  res.send(`Welcome, ${req.thunderID.user.name}`)
-})
-
-// Return 401 for API routes
-app.get('/api/profile', requireAuth({ redirect: false }), (req, res) => {
-  res.json({ user: req.thunderID.user })
-})
-```
-
-## Step 6 — Run and Verify
+## Step 4 — Run and Verify
 
 ```bash
-npm run dev   # or node index.js
+node index.js
 ```
 
-Visit `http://localhost:3000/login` — you should be redirected to `https://localhost:8090` and returned after login.
+Visit `http://localhost:3000/protected` — you should be redirected to `https://localhost:8090`. After login, you'll return to the protected route. Visit `http://localhost:3000/me` to inspect the signed-in user profile.
 
 ## Troubleshooting
 
 **Certificate error** — Set `NODE_TLS_REJECT_UNAUTHORIZED=0` in `.env` for local development (remove before deploying).
-
-**Session not persisting** — Ensure `sessionSecret` is set and that your Express app has a session store configured for production.
 
 **`invalid_client`** — Double-check the Client ID and Client Secret.

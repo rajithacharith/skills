@@ -19,7 +19,7 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 3. Fill in:
    - **Name**: your app name
    - **Type**: Web Application
-   - **Authorized Redirect URL**: `http://localhost:3000/callback`
+   - **Authorized Redirect URL**: `http://localhost:3000`
 4. Copy the **Client ID** and **Client Secret**
 
 ### Via the API
@@ -37,7 +37,7 @@ curl -kL -X POST https://localhost:8090/applications \
       "config": {
         "grantTypes": ["authorization_code", "refresh_token"],
         "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:3000/callback"],
+        "redirectUris": ["http://localhost:3000"],
         "tokenEndpointAuthMethod": "client_secret_basic",
         "publicClient": false,
         "pkceRequired": true
@@ -54,56 +54,90 @@ Detect the package manager from lockfiles: `pnpm-lock.yaml` → `pnpm add`, `yar
 npm install @thunderid/nextjs
 ```
 
-## Step 3 — Configure Provider
+## Step 3 — Set Environment Variables
 
-Edit `app/layout.tsx` (App Router):
+Create `.env.local`:
+
+```env
+NEXT_PUBLIC_THUNDERID_BASE_URL=https://localhost:8090
+NEXT_PUBLIC_THUNDERID_CLIENT_ID=<your-client-id>
+THUNDERID_CLIENT_SECRET=<your-client-secret>
+THUNDERID_SECRET=<a-random-secret-for-session-signing>
+```
+
+Generate `THUNDERID_SECRET` with `openssl rand -base64 32` (at least 32 characters).
+
+## Step 4 — Add ThunderIDProvider to Layout
+
+Edit `app/layout.tsx` — `ThunderIDProvider` handles the OAuth callback automatically; no manual callback route needed:
 
 ```tsx
-import { ThunderIDServerProvider } from '@thunderid/nextjs'
+import { ThunderIDProvider } from '@thunderid/nextjs/server'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ThunderIDServerProvider>{children}</ThunderIDServerProvider>
+        <ThunderIDProvider>
+          {children}
+        </ThunderIDProvider>
       </body>
     </html>
   )
 }
 ```
 
-Add to `.env.local`:
+## Step 5 — Add Middleware for Route Protection
 
-```env
-NEXT_PUBLIC_THUNDERID_BASE_URL=https://localhost:8090
-NEXT_PUBLIC_THUNDERID_CLIENT_ID=<your-client-id>
-THUNDERID_CLIENT_SECRET=<your-client-secret>
+Create `middleware.ts` at the project root:
+
+```ts
+import {
+  thunderIDMiddleware,
+  createRouteMatcher,
+} from '@thunderid/nextjs/middleware'
+
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)'])
+
+export default thunderIDMiddleware(async (thunderid, request) => {
+  if (isProtectedRoute(request)) {
+    await thunderid.protectRoute()
+  }
+})
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+}
 ```
 
-## Step 4 — Add Auth UI
+## Step 6 — Add Auth UI
 
 ```tsx
 import {
-  SignedIn, SignedOut, SignInButton, SignOutButton, Loading, User,
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignOutButton,
+  UserDropdown,
 } from '@thunderid/nextjs'
 
-export default function Page() {
+export default function Home() {
   return (
-    <>
-      <Loading><div>Loading...</div></Loading>
-      <SignedIn><SignOutButton>Sign Out</SignOutButton></SignedIn>
-      <SignedOut><SignInButton>Sign In</SignInButton></SignedOut>
+    <main>
+      <h1>Next.js Auth Demo</h1>
+      <SignedOut>
+        <SignInButton>Sign In</SignInButton>
+      </SignedOut>
       <SignedIn>
-        <User>
-          {(user) => user && <p>Welcome, {user.name || user.username}!</p>}
-        </User>
+        <UserDropdown />
+        <SignOutButton>Sign Out</SignOutButton>
       </SignedIn>
-    </>
+    </main>
   )
 }
 ```
 
-## Step 5 — Run and Verify
+## Step 7 — Run and Verify
 
 ```bash
 npm run dev

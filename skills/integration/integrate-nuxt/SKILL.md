@@ -19,7 +19,7 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 3. Fill in:
    - **Name**: your app name
    - **Type**: Web Application
-   - **Authorized Redirect URL**: `http://localhost:3000/callback`
+   - **Authorized Redirect URL**: `http://localhost:3000/api/auth/callback`
 4. Copy the **Client ID**, **Client Secret**, and generate a session secret (random 32+ char string)
 
 ### Via the API
@@ -37,7 +37,7 @@ curl -kL -X POST https://localhost:8090/applications \
       "config": {
         "grantTypes": ["authorization_code", "refresh_token"],
         "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:3000/callback"],
+        "redirectUris": ["http://localhost:3000/api/auth/callback"],
         "tokenEndpointAuthMethod": "client_secret_basic",
         "publicClient": false,
         "pkceRequired": true
@@ -54,7 +54,7 @@ Detect the package manager from lockfiles: `pnpm-lock.yaml` → `pnpm add`, `yar
 npm install @thunderid/nuxt
 ```
 
-## Step 3 — Configure Module
+## Step 3 — Register the Module
 
 Edit `nuxt.config.ts`:
 
@@ -64,15 +64,11 @@ export default defineNuxtConfig({
 })
 ```
 
-Wrap `app.vue`:
+The module auto-registers `/api/auth/callback` as a Nitro server route — no manual callback route needed. It also auto-imports all components and composables.
 
-```vue
-<template>
-  <ThunderIDRoot><NuxtPage /></ThunderIDRoot>
-</template>
-```
+## Step 4 — Set Environment Variables
 
-Add to `.env.local`:
+Create `.env`:
 
 ```env
 NUXT_PUBLIC_THUNDERID_BASE_URL=https://localhost:8090
@@ -81,28 +77,60 @@ THUNDERID_CLIENT_SECRET=<your-client-secret>
 THUNDERID_SESSION_SECRET=<random-string-at-least-32-chars>
 ```
 
-## Step 4 — Add Auth UI
+Generate `THUNDERID_SESSION_SECRET` with `openssl rand -base64 32`. `THUNDERID_CLIENT_SECRET` and `THUNDERID_SESSION_SECRET` have no `NUXT_PUBLIC_` prefix — Nuxt keeps them server-side only.
+
+## Step 5 — Wrap App with ThunderIDRoot
+
+Edit `app.vue`:
 
 ```vue
-<script setup>
-import { SignedIn, SignedOut, SignInButton, SignOutButton, Loading, User } from '@thunderid/nuxt'
-</script>
-
 <template>
-  <Loading><div>Loading...</div></Loading>
-  <SignedIn><SignOutButton>Sign Out</SignOutButton></SignedIn>
-  <SignedOut><SignInButton>Sign In</SignInButton></SignedOut>
-  <SignedIn>
-    <User>
-      <template #default="{ user }">
-        <p>Welcome, {{ user.name || user.username }}!</p>
-      </template>
-    </User>
-  </SignedIn>
+  <ThunderIDRoot>
+    <NuxtPage />
+  </ThunderIDRoot>
 </template>
 ```
 
-## Step 5 — Run and Verify
+## Step 6 — Add Auth UI
+
+All components and composables are auto-imported. Create `pages/index.vue`:
+
+```vue
+<template>
+  <main>
+    <header>
+      <h1>ThunderID Auth Demo</h1>
+      <SignedIn>
+        <SignOutButton>Sign Out</SignOutButton>
+      </SignedIn>
+      <SignedOut>
+        <SignInButton>Sign In</SignInButton>
+      </SignedOut>
+    </header>
+    <section>
+      <SignedIn>
+        <User>
+          <template #default="{ user }">
+            <p>Welcome, {{ user.name || user.username }}!</p>
+          </template>
+        </User>
+      </SignedIn>
+    </section>
+  </main>
+</template>
+```
+
+## Step 7 — Protect a Page
+
+```vue
+<script setup>
+definePageMeta({ middleware: ['thunderIDMiddleware'] });
+</script>
+```
+
+Unauthenticated users are automatically redirected to the sign-in page.
+
+## Step 8 — Run and Verify
 
 ```bash
 npm run dev
@@ -114,4 +142,4 @@ Click **Sign In** — you should be redirected to `https://localhost:8090` and r
 
 **Certificate error** — Visit `https://localhost:8090` in your browser and accept the warning once.
 
-**`invalid_client`** — Double-check the Client ID and Client Secret in `.env.local`.
+**`invalid_client`** — Double-check the Client ID and Client Secret in `.env`.

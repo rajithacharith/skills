@@ -12,7 +12,7 @@ metadata:
 
 Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-thunderid` first.
 
-`@thunderid/node` is the generic Node.js SDK — use it with Fastify, Hono, Koa, or any other Node.js framework. For Express, use `/integrate-express` instead.
+`@thunderid/node` is the generic Node.js SDK — use it with the built-in `http` module, Fastify, Hono, Koa, or any other Node.js framework. For Express, use `/integrate-express` instead.
 
 ## Step 1 — Register an Application
 
@@ -56,86 +56,141 @@ Detect the package manager from lockfiles: `pnpm-lock.yaml` → `pnpm add`, `yar
 npm install @thunderid/node
 ```
 
-## Step 3 — Create a Client
+## Step 3 — Initialize the Client
 
-```ts
-import { createThunderID } from '@thunderid/node'
+Create `index.js` and initialize `ThunderIDNodeClient` with your application credentials:
 
-export const thunderid = createThunderID({
-  clientId: '<your-client-id>',
-  clientSecret: '<your-client-secret>',
-  baseUrl: 'https://localhost:8090',
-  redirectUri: 'http://localhost:3000/callback',
-})
+```js
+const http = require('http');
+const { URL } = require('url');
+const { randomUUID } = require('crypto');
+const { ThunderIDNodeClient } = require('@thunderid/node');
+
+const PORT = 3000;
+const SESSION_COOKIE = 'tid_session';
+
+const auth = new ThunderIDNodeClient();
+
+function getSessionId(req) {
+  const cookieHeader = req.headers.cookie ?? '';
+  for (const part of cookieHeader.split(';')) {
+    const [name, value] = part.trim().split('=');
+    if (name === SESSION_COOKIE) return decodeURIComponent(value);
+  }
+  return null;
+}
+
+async function main() {
+  await auth.initialize({
+    clientId: '<your-client-id>',
+    clientSecret: '<your-client-secret>',
+    baseUrl: 'https://localhost:8090',
+    afterSignInUrl: 'http://localhost:3000/callback',
+    afterSignOutUrl: 'http://localhost:3000',
+  });
+
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+
+    try {
+      if (url.pathname === '/') {
+        const sessionId = getSessionId(req);
+        const signedIn = sessionId && (await auth.isSignedIn(sessionId));
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(signedIn
+          ? '<a href="/profile">View profile</a> | <a href="/logout">Sign out</a>'
+          : '<a href="/login">Sign in</a>'
+        );
+
+      } else if (url.pathname === '/profile') {
+        const sessionId = getSessionId(req);
+        if (!sessionId || !(await auth.isSignedIn(sessionId))) {
+          res.writeHead(302, { Location: '/login' });
+          return res.end();
+        }
+        const user = await auth.getUser(sessionId);
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <h1>Welcome, ${user.name || user.username}!</h1>
+          <p><strong>Email:</strong> ${user.email}</p>
+          <a href="/logout">Sign out</a>
+        `);
+
+      } else if (url.pathname === '/login') {
+        let sessionId = getSessionId(req);
+        const extraHeaders = {};
+        if (!sessionId) {
+          sessionId = randomUUID();
+          extraHeaders['Set-Cookie'] =
+            `${SESSION_COOKIE}=${sessionId}; HttpOnly; SameSite=Lax; Path=/`;
+        }
+        await auth.signIn((authUrl) => {
+          res.writeHead(302, { ...extraHeaders, Location: authUrl });
+          res.end();
+        }, sessionId);
+
+      } else if (url.pathname === '/callback') {
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
+        const sessionState = url.searchParams.get('session_state');
+        const sessionId = getSessionId(req);
+
+        if (!sessionId || !code || !state) {
+          res.writeHead(400);
+          return res.end('Bad request');
+        }
+
+        await auth.signIn(() => {}, sessionId, code, sessionState, state);
+        res.writeHead(302, { Location: '/profile' });
+        res.end();
+
+      } else if (url.pathname === '/logout') {
+        const sessionId = getSessionId(req);
+        if (!sessionId) {
+          res.writeHead(302, { Location: '/' });
+          return res.end();
+        }
+        const signOutUrl = await auth.signOut(sessionId);
+        res.writeHead(302, {
+          Location: signOutUrl,
+          'Set-Cookie': `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+        });
+        res.end();
+
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    } catch {
+      res.writeHead(500);
+      res.end('Internal server error');
+    }
+  });
+
+  server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+main();
 ```
 
-## Step 4 — Wire Up Auth Routes
+**How the sign-in flow works:**
 
-**Login route — redirect the user to ThunderID:**
+1. `GET /login` — generates a session ID cookie and calls `signIn` with an `authUrlCallback` that redirects to ThunderID.
+2. `GET /callback` — ThunderID redirects back with `code` and `state`; calling `signIn` again exchanges the code for tokens.
+3. `GET /logout` — calls `signOut` to get the OIDC end-session URL, clears the cookie, redirects to complete logout at ThunderID.
 
-```ts
-app.get('/login', async (req, reply) => {
-  const { url, codeVerifier, state } = await thunderid.createAuthorizationUrl()
-  // Persist codeVerifier and state in the session
-  req.session.codeVerifier = codeVerifier
-  req.session.oauthState = state
-  reply.redirect(url)
-})
+## Step 4 — Run and Verify
+
+```bash
+node index.js
 ```
 
-**Callback route — exchange the code for tokens:**
-
-```ts
-app.get('/callback', async (req, reply) => {
-  const { code, state } = req.query as { code: string; state: string }
-  const tokens = await thunderid.exchangeCode({
-    code,
-    codeVerifier: req.session.codeVerifier,
-    state,
-    expectedState: req.session.oauthState,
-  })
-  req.session.user = await thunderid.getUserInfo(tokens.accessToken)
-  reply.redirect('/')
-})
-```
-
-**Logout route:**
-
-```ts
-app.get('/logout', async (req, reply) => {
-  req.session.destroy()
-  const logoutUrl = thunderid.createLogoutUrl({ postLogoutRedirectUri: 'http://localhost:3000' })
-  reply.redirect(logoutUrl)
-})
-```
-
-## Step 5 — Protect Routes
-
-**Verify a token from an `Authorization` header (API routes):**
-
-```ts
-app.get('/api/profile', async (req, reply) => {
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return reply.code(401).send({ error: 'Unauthorized' })
-
-  const user = await thunderid.verifyToken(token)
-  reply.send({ user })
-})
-```
-
-**Check session (web routes):**
-
-```ts
-app.get('/dashboard', async (req, reply) => {
-  if (!req.session.user) return reply.redirect('/login')
-  reply.send(`Welcome, ${req.session.user.name}`)
-})
-```
+Visit `http://localhost:3000` — click the sign-in link to authenticate, then view your profile at `/profile`.
 
 ## Troubleshooting
 
 **Certificate error** — Set `NODE_TLS_REJECT_UNAUTHORIZED=0` in `.env` for local development (remove before deploying).
-
-**`invalid_grant`** — The `codeVerifier` in the callback must match what was stored during the login redirect.
 
 **`invalid_client`** — Double-check the Client ID and Client Secret.

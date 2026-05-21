@@ -58,57 +58,62 @@ npm install @thunderid/browser
 
 ## Step 3 — Initialize the SDK
 
-Create `src/auth.ts` (or `auth.js`):
+Create `src/auth.js`:
 
-```ts
-import { createThunderID } from '@thunderid/browser'
+```js
+import { ThunderIDBrowserClient } from '@thunderid/browser'
 
-export const thunderid = createThunderID({
+const auth = new ThunderIDBrowserClient()
+
+await auth.initialize({
   clientId: '<your-client-id>',
   baseUrl: 'https://localhost:8090',
-  redirectUri: `${window.location.origin}/callback`,
-})
-```
-
-Call `thunderid.init()` once on app start to restore any existing session and handle the callback redirect:
-
-```ts
-import { thunderid } from './auth'
-
-await thunderid.init()
-```
-
-## Step 4 — Add Sign-In and Sign-Out
-
-```ts
-import { thunderid } from './auth'
-
-// Redirect to ThunderID login
-document.getElementById('sign-in')?.addEventListener('click', () => {
-  thunderid.signIn()
+  afterSignInUrl: window.location.origin,
+  afterSignOutUrl: window.location.origin,
 })
 
-// End session and redirect to ThunderID logout
-document.getElementById('sign-out')?.addEventListener('click', () => {
-  thunderid.signOut()
-})
+export default auth
 ```
 
-## Step 5 — Read the Current User
+## Step 4 — Add Sign-In, Sign-Out, and User Display
 
-```ts
-import { thunderid } from './auth'
+Replace `src/main.js`:
 
-const user = await thunderid.getUser()
+```js
+import './style.css'
+import auth from './auth.js'
 
-if (user) {
-  console.log(user.name, user.email)
-} else {
-  console.log('Not signed in')
+async function renderApp() {
+  const isSignedIn = await auth.isSignedIn()
+
+  if (isSignedIn) {
+    const user = await auth.getUser()
+
+    document.querySelector('#app').innerHTML = `
+      <div>
+        <h2>Welcome, ${user.displayName || user.username}!</h2>
+        <p><strong>Email:</strong> ${user.email || 'N/A'}</p>
+        <button id="sign-out-btn" type="button">Sign Out</button>
+      </div>
+    `
+    document.querySelector('#sign-out-btn')
+      .addEventListener('click', () => auth.signOut())
+  } else {
+    document.querySelector('#app').innerHTML = `
+      <div>
+        <p>You are not signed in.</p>
+        <button id="sign-in-btn" type="button">Sign In</button>
+      </div>
+    `
+    document.querySelector('#sign-in-btn')
+      .addEventListener('click', () => auth.signIn())
+  }
 }
+
+renderApp()
 ```
 
-## Step 6 — Run and Verify
+## Step 5 — Run and Verify
 
 ```bash
 npm run dev
@@ -120,6 +125,4 @@ Click **Sign In** — you should be redirected to `https://localhost:8090` and r
 
 **Certificate error** — Visit `https://localhost:8090` in your browser and accept the warning once.
 
-**`init()` not handling callback** — Ensure `thunderid.init()` is called on every page load, including the `/callback` page. It detects the `code` query parameter automatically.
-
-**Session lost on refresh** — Call `thunderid.init()` before reading `getUser()` to restore the session from storage.
+**Not signed in after redirect** — Ensure `auth.initialize()` is awaited on every page load; it detects the `code` query parameter automatically and completes the callback exchange.
