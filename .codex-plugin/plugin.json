@@ -7,7 +7,7 @@
     "email": "",
     "url": "https://thunderid.dev"
   },
-  "repository": "https://github.com/thunderid/skills",
+  "repository": "https://github.com/thunder-id/skills",
   "license": "Apache-2.0",
   "keywords": ["thunderid", "auth", "oidc", "oauth2"],
   "skills": "./skills/",
