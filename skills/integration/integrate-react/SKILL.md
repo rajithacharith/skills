@@ -14,37 +14,19 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 
 ## Step 1 — Register an Application
 
-1. Open `https://localhost:8090/console` and sign in as `admin` / `admin`
+Ask the developer to create an application in ThunderID and share the **Client ID** before continuing.
+
+Guide them through these steps:
+
+1. Open `https://localhost:8090/console` and sign in (default: `admin` / `secret`)
 2. Navigate to **Applications → New Application**
 3. Fill in:
-   - **Name**: your app name
+   - **Name**: their app name (e.g. `my-react-app`)
    - **Type**: Single Page Application
-   - **Authorized Redirect URL**: `http://localhost:5173/callback`
-4. Copy the **Client ID**
+   - **Authorized Redirect URL**: `http://localhost:5173`
+4. Click **Create** and copy the **Client ID** shown on the next screen
 
-### Via the API
-
-First obtain a system API token from the ThunderID console, then:
-
-```bash
-curl -kL -X POST https://localhost:8090/applications \
-  -H 'Authorization: Bearer <your-system-token>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "my-react-app",
-    "inboundAuthConfig": [{
-      "type": "oauth2",
-      "config": {
-        "grantTypes": ["authorization_code", "refresh_token"],
-        "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:5173/callback"],
-        "tokenEndpointAuthMethod": "none",
-        "publicClient": true,
-        "pkceRequired": true
-      }
-    }]
-  }'
-```
+Once they paste the Client ID, use it as the `clientId` value in all subsequent steps. Do **not** use a placeholder — wait for the real value.
 
 ## Step 2 — Install
 
@@ -56,7 +38,7 @@ npm install @thunderid/react
 
 ## Step 3 — Wrap with Provider
 
-Edit `src/main.jsx` (or `src/main.tsx`):
+Edit `src/main.jsx` (or `src/main.tsx`), substituting the Client ID the developer provided:
 
 ```jsx
 import { StrictMode } from 'react'
@@ -68,7 +50,7 @@ import './index.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThunderIDProvider
-      clientId="<your-client-id>"
+      clientId="CLIENT_ID_FROM_USER"
       baseUrl="https://localhost:8090"
     >
       <App />
@@ -76,6 +58,8 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>
 )
 ```
+
+Replace `CLIENT_ID_FROM_USER` with the actual Client ID the developer shared in Step 1.
 
 ## Step 4 — Add Auth UI
 

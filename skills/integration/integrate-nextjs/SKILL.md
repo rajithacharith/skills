@@ -14,37 +14,19 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 
 ## Step 1 — Register an Application
 
-1. Open `https://localhost:8090/console` and sign in as `admin` / `admin`
+Ask the developer to create an application in ThunderID and share the **Client ID** and **Client Secret** before continuing.
+
+Guide them through these steps:
+
+1. Open `https://localhost:8090/console` and sign in (default: `admin` / `secret`)
 2. Navigate to **Applications → New Application**
 3. Fill in:
-   - **Name**: your app name
+   - **Name**: their app name (e.g. `my-nextjs-app`)
    - **Type**: Web Application
    - **Authorized Redirect URL**: `http://localhost:3000`
-4. Copy the **Client ID** and **Client Secret**
+4. Click **Create** and copy the **Client ID** and **Client Secret** shown on the next screen
 
-### Via the API
-
-First obtain a system API token from the ThunderID console, then:
-
-```bash
-curl -kL -X POST https://localhost:8090/applications \
-  -H 'Authorization: Bearer <your-system-token>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "my-nextjs-app",
-    "inboundAuthConfig": [{
-      "type": "oauth2",
-      "config": {
-        "grantTypes": ["authorization_code", "refresh_token"],
-        "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:3000"],
-        "tokenEndpointAuthMethod": "client_secret_basic",
-        "publicClient": false,
-        "pkceRequired": true
-      }
-    }]
-  }'
-```
+Once they paste both values, use them in all subsequent steps. Do **not** use placeholders — wait for the real values.
 
 ## Step 2 — Install
 

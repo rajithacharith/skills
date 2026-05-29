@@ -15,14 +15,19 @@ Ask the developer which option they prefer, then run the command.
 ## Option A — npx (recommended)
 
 ```bash
-npx thunderid
+npx thunderid --install-dir . --admin-username admin --admin-password secret
+```
+
+Alternatively, configure via environment variables:
+
+```bash
+THUNDER_INSTALL_DIR=. ADMIN_USERNAME=admin ADMIN_PASSWORD=secret npx thunderid
 ```
 
 Downloads the latest ThunderID release for the current OS/arch, runs first-time setup, and starts the server — no manual steps required.
 
 - Server starts at **https://localhost:8090**
-- Console at **https://localhost:8090/console** — default credentials: `admin` / `admin`
-- During setup, note the `[INFO] Sample App ID: <id>` line — you will need this Client ID when integrating an app
+- Console at **https://localhost:8090/console** — default credentials: `admin` / `secret`
 
 ## Option B — Docker Compose
 

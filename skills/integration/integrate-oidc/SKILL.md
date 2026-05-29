@@ -31,12 +31,19 @@ OIDC endpoints:
 
 ## Step 1 — Register an Application
 
-1. Open `https://localhost:8090/console` and sign in as `admin` / `admin`
+Ask the developer to create an application in ThunderID and share the **Client ID** (and **Client Secret** for server-side apps) before continuing.
+
+Guide them through these steps:
+
+1. Open `https://localhost:8090/console` and sign in (default: `admin` / `secret`)
 2. Navigate to **Applications → New Application**
 3. Fill in:
+   - **Name**: their app name
    - **Type**: Single Page Application for browser apps; Web Application for server-side
-   - **Authorized Redirect URL**: your app's callback URL
-4. Copy the **Client ID** (and **Client Secret** for server-side apps)
+   - **Authorized Redirect URL**: their app's callback URL
+4. Click **Create** and copy the **Client ID** (and **Client Secret** for server-side apps)
+
+Once they paste the values, use them in all subsequent steps. Do **not** use placeholders — wait for the real values.
 
 ---
 

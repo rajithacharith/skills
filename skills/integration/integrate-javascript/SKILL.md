@@ -16,37 +16,19 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 
 ## Step 1 — Register an Application
 
-1. Open `https://localhost:8090/console` and sign in as `admin` / `admin`
+Ask the developer to create an application in ThunderID and share the **Client ID** (and **Client Secret** for confidential/server-side clients) before continuing.
+
+Guide them through these steps:
+
+1. Open `https://localhost:8090/console` and sign in (default: `admin` / `secret`)
 2. Navigate to **Applications → New Application**
 3. Fill in:
-   - **Name**: your app name
+   - **Name**: their app name (e.g. `my-js-app`)
    - **Type**: Single Page Application for public clients; Web Application for confidential clients
-   - **Authorized Redirect URL**: your callback URL
-4. Copy the **Client ID** (and **Client Secret** for confidential clients)
+   - **Authorized Redirect URL**: their app's redirect URL (e.g. `http://localhost:3000`)
+4. Click **Create** and copy the **Client ID** (and **Client Secret** if it's a Web Application)
 
-### Via the API
-
-First obtain a system API token from the ThunderID console, then:
-
-```bash
-curl -kL -X POST https://localhost:8090/applications \
-  -H 'Authorization: Bearer <your-system-token>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "my-js-app",
-    "inboundAuthConfig": [{
-      "type": "oauth2",
-      "config": {
-        "grantTypes": ["authorization_code", "refresh_token"],
-        "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:3000/callback"],
-        "tokenEndpointAuthMethod": "none",
-        "publicClient": true,
-        "pkceRequired": true
-      }
-    }]
-  }'
-```
+Once they paste the values, use them in all subsequent steps. Do **not** use placeholders — wait for the real values.
 
 ## Step 2 — Install
 

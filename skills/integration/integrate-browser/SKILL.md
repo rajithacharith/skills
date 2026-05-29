@@ -16,37 +16,19 @@ Assumes ThunderID is running at `https://localhost:8090`. If not, run `/setup-th
 
 ## Step 1 — Register an Application
 
-1. Open `https://localhost:8090/console` and sign in as `admin` / `admin`
+Ask the developer to create an application in ThunderID and share the **Client ID** before continuing.
+
+Guide them through these steps:
+
+1. Open `https://localhost:8090/console` and sign in (default: `admin` / `secret`)
 2. Navigate to **Applications → New Application**
 3. Fill in:
-   - **Name**: your app name
+   - **Name**: their app name (e.g. `my-browser-app`)
    - **Type**: Single Page Application
-   - **Authorized Redirect URL**: `http://localhost:5173/callback` (or your app's callback URL)
-4. Copy the **Client ID**
+   - **Authorized Redirect URL**: `http://localhost:5173`
+4. Click **Create** and copy the **Client ID** shown on the next screen
 
-### Via the API
-
-First obtain a system API token from the ThunderID console, then:
-
-```bash
-curl -kL -X POST https://localhost:8090/applications \
-  -H 'Authorization: Bearer <your-system-token>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "my-browser-app",
-    "inboundAuthConfig": [{
-      "type": "oauth2",
-      "config": {
-        "grantTypes": ["authorization_code", "refresh_token"],
-        "responseTypes": ["code"],
-        "redirectUris": ["http://localhost:5173/callback"],
-        "tokenEndpointAuthMethod": "none",
-        "publicClient": true,
-        "pkceRequired": true
-      }
-    }]
-  }'
-```
+Once they paste the Client ID, use it in all subsequent steps. Do **not** use a placeholder — wait for the real value.
 
 ## Step 2 — Install
 
